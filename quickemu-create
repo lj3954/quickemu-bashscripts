@@ -1,0 +1,26 @@
+#!/bin/bash
+cd /home/liam/Documents/VMs/
+quickget PLACEHOLDER | tail -n +3
+echo
+echo
+set -e
+read -p 'Enter an operating system: ' OS
+if ! quickget $OS | grep -q ' - Releases: ' > /dev/null; then
+	echo
+	echo Failure. Invalid OS
+	exit
+fi
+echo
+echo
+quickget $OS | tail -n +2
+read -p 'Enter a release: ' Ver
+read -p 'Enter a revision: ' Rev
+mkdir "$OS $Ver - Revision $Rev"
+cd "$OS $Ver - Revision $Rev"
+if quickget $OS $Ver ; then
+	echo Success!
+	quickemu -vm $OS-$Ver.conf
+else
+	echo Failure, reverting changes
+	rm -rf /home/liam/Documents/VMs/"$OS $Ver - Revision $Rev"
+fi
