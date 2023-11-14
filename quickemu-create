@@ -14,13 +14,27 @@ echo
 echo
 quickget $OS | tail -n +2
 read -p 'Enter a release: ' Ver
-read -p 'Enter a revision: ' Rev
-mkdir "$OS $Ver - Revision $Rev"
-cd "$OS $Ver - Revision $Rev"
-if quickget $OS $Ver ; then
+if quickget $OS | grep ' - Editions: '; then
+	read -p 'Enter an edition: ' Edition
+	read -p 'Enter a revision: ' Rev
+	mkdir "$OS $Ver $Edition - Revision $Rev"
+	cd "$OS $Ver $Edition - Revision $Rev"
+	if quickget $OS $Ver $Edition ; then
+		echo Success!
+		quickemu -vm $OS-$Ver-$Edition.conf
+	else
+		echo Failure, reverting changes
+		rm -rf /home/liam/Documents/VMs/"$OS $Ver $Edition - Revision $Rev"
+	fi
+else
+	read -p 'Enter a revision: ' Rev
+	mkdir "$OS $Ver - Revision $Rev"
+	cd "$OS $Ver - Revision $Rev"
+	if quickget $OS $Ver ; then
 	echo Success!
 	quickemu -vm $OS-$Ver.conf
-else
-	echo Failure, reverting changes
-	rm -rf /home/liam/Documents/VMs/"$OS $Ver - Revision $Rev"
+	else
+		echo Failure, reverting changes
+		rm -rf /home/liam/Documents/VMs/"$OS $Ver - Revision $Rev"
+	fi
 fi

@@ -2,11 +2,10 @@
 echo Available VMs: 
 cd /home/liam/Documents/VMs && ls
 echo
-echo Do not input spaces in your selection
+echo Do not input extra spaces in your selection. Capitalization must match.
 echo
-read -p 'Select a release (OS + Version): ' rel
+read -p 'Select a release (OS + Version + Edition, if applicable): ' rel
 read -p 'Select a revision: ' rev
 cd "$rel - Revision $rev"
 quickemu --vm "${rel// /-}".conf
-echo quickemu --vm "${rel// /-}".conf
-mkdir abc
+# echo DEBUGGING: quickemu --vm "${rel// /-}".conf
