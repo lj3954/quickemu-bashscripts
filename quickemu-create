@@ -1,5 +1,23 @@
 #!/bin/bash
-cd /home/liam/Documents/VMs/
+if whoami | grep -q root; then
+	echo Cannot run this script as root
+	exit
+fi
+if ! cd ~/.local/bin/quickemu; then
+	git clone https://github.com/quickemu-project/quickemu
+fi
+if ! cd ~/Documents/VMs; then
+	mkdir ~/Documents/VMs
+	echo Created VMs folder.
+fi
+
+export PATH=$PATH:~/.local/bin/quickemu
+# Update repository
+cd ~/.local/bin/quickemu
+if ! git pull | grep 'Already up to date.' > /dev/null; then 
+	echo "Updated quickemu from repository."
+fi
+cd ~/Documents/VMs/
 quickget PLACEHOLDER | tail -n +3
 echo
 echo
@@ -7,34 +25,20 @@ set -e
 read -p 'Enter an operating system: ' OS
 if ! quickget $OS | grep -q ' - Releases: ' > /dev/null; then
 	echo
-	echo Failure. Invalid OS
+	echo Failure. Invalid OS.
 	exit
 fi
 echo
 echo
 quickget $OS | tail -n +2
 read -p 'Enter a release: ' Ver
-if quickget $OS | grep ' - Editions: '; then
-	read -p 'Enter an edition: ' Edition
-	read -p 'Enter a revision: ' Rev
-	mkdir "$OS $Ver $Edition - Revision $Rev"
-	cd "$OS $Ver $Edition - Revision $Rev"
-	if quickget $OS $Ver $Edition ; then
-		echo Success!
-		quickemu -vm $OS-$Ver-$Edition.conf
-	else
-		echo Failure, reverting changes
-		rm -rf /home/liam/Documents/VMs/"$OS $Ver $Edition - Revision $Rev"
-	fi
-else
-	read -p 'Enter a revision: ' Rev
-	mkdir "$OS $Ver - Revision $Rev"
-	cd "$OS $Ver - Revision $Rev"
-	if quickget $OS $Ver ; then
+read -p 'Enter a revision: ' Rev
+mkdir "$OS $Ver - Revision $Rev"
+cd "$OS $Ver - Revision $Rev"
+if quickget $OS $Ver ; then
 	echo Success!
 	quickemu -vm $OS-$Ver.conf
-	else
-		echo Failure, reverting changes
-		rm -rf /home/liam/Documents/VMs/"$OS $Ver - Revision $Rev"
-	fi
+else
+	echo Failure, reverting changes.
+	rm -rf ~/Documents/VMs/"$OS $Ver - Revision $Rev"
 fi

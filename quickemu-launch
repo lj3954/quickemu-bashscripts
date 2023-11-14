@@ -1,0 +1,28 @@
+#!/bin/bash
+if whoami | grep -q root; then
+	echo Cannot run this script as root
+	exit
+fi
+if ! cd ~/.local/bin/quickemu; then
+	echo Quickemu not found in expected directory. Run quickemu-create to fix the issue.
+	exit
+fi
+if ! cd ~/Documents/VMs; then
+	mkdir ~/Documents/VMs
+	echo Created VMs folder.
+fi
+cd ~/Documents/VMs
+if [ -z "$(ls)" ]; then
+    echo No VMs found. Run quickemu-create to create one.
+    exit
+fi
+echo Available VMs:
+ls
+echo
+echo Do not input extra spaces in your selection. Capitalization must match.
+echo
+read -p 'Select a release (OS + Version + Edition, if applicable): ' rel
+read -p 'Select a revision: ' rev
+cd "$rel - Revision $rev"
+quickemu --vm "${rel// /-}".conf
+# echo DEBUGGING: quickemu --vm "${rel// /-}".conf
