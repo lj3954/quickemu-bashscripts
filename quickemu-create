@@ -18,6 +18,7 @@ if ! git pull | grep 'Already up to date.' > /dev/null; then
 	echo "Updated quickemu from repository."
 fi
 cd ~/Documents/VMs/
+echo Available Operating Systems:
 quickget PLACEHOLDER | tail -n +3
 echo
 echo
