@@ -23,6 +23,10 @@ for i in "${!VMs[@]}"; do
 	echo "$((i+1)). ${VMs[$i]}"
 done
 read -p 'Select a VM: ' selection
+if ((selection < 1)) || ((selection > ${#VMs[@]})); then
+    echo "Invalid selection. Exiting."
+    exit
+fi
 echo -e '\n\nAvailable parameters:\n'
 quickemu --help | tail -n +6 | head -n -1
 read -p 'Enter any additional parameters you would like to pass: ' args
