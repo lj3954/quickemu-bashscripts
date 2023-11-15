@@ -11,18 +11,19 @@ if ! cd ~/Documents/VMs; then
 	mkdir ~/Documents/VMs
 	echo Created VMs folder.
 fi
+export PATH=$PATH:~/.local/bin/quickemu
+IFS=$'\n' VMs=( $(ls ~/Documents/VMs) )
+echo $VMs
 cd ~/Documents/VMs
-if [ -z "$(ls)" ]; then
+if [ -z $VMs ]; then
     echo No VMs found. Run quickemu-create to create one.
     exit
 fi
 echo Available VMs:
-ls
-echo
-echo Do not input extra spaces in your selection. Capitalization must match.
-echo
-read -p 'Select a release (OS + Version + Edition, if applicable): ' rel
-read -p 'Select a revision: ' rev
-cd "$rel - Revision $rev"
-quickemu --vm "${rel// /-}".conf
-# echo DEBUGGING: quickemu --vm "${rel// /-}".conf
+for i in "${!VMs[@]}"; do
+	echo "$((i+1)). ${VMs[$i]}"
+done
+read -p 'Select a VM: ' selection
+cd ~/Documents/VMs/"${VMs[$selection-1]}"
+quickemu --vm $(ls | grep .conf)
+echo quickemu --vm $(ls | grep .conf)
