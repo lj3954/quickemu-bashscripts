@@ -13,7 +13,6 @@ if ! cd ~/Documents/VMs; then
 fi
 export PATH=$PATH:~/.local/bin/quickemu
 IFS=$'\n' VMs=( $(ls ~/Documents/VMs) )
-echo $VMs
 cd ~/Documents/VMs
 if [ -z $VMs ]; then
     echo No VMs found. Run quickemu-create to create one.
@@ -24,6 +23,8 @@ for i in "${!VMs[@]}"; do
 	echo "$((i+1)). ${VMs[$i]}"
 done
 read -p 'Select a VM: ' selection
+echo -e '\n\nAvailable parameters:\n'
+quickemu --help | tail -n +6 | head -n -1
+read -p 'Enter any additional parameters you would like to pass: ' args
 cd ~/Documents/VMs/"${VMs[$selection-1]}"
-quickemu --vm $(ls | grep .conf)
-echo quickemu --vm $(ls | grep .conf)
+eval "quickemu --vm \"$(ls | grep .conf)\" $args"

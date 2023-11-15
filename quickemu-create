@@ -21,12 +21,10 @@ fi
 cd ~/Documents/VMs/
 echo Available Operating Systems:
 quickget PLACEHOLDER | tail -n +3
-echo
-echo
+echo -e '\n'
 read -p 'Enter an operating system: ' OS
 if ! quickget $OS | grep -q ' - Releases: ' > /dev/null; then
-	echo
-	echo Failure. Invalid OS.
+	echo -e '\nFailure. Invalid OS.'
 	exit
 fi
 echo
