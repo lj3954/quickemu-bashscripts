@@ -3,7 +3,8 @@ if whoami | grep -q root; then
 	echo Cannot run this script as root
 	exit
 fi
-if ! cd ~/.local/bin/quickemu; then
+if ! cd ~/.local/bin/quickemu 2> /dev/null; then
+	cd ~/.local/bin/
 	git clone https://github.com/quickemu-project/quickemu
 fi
 if ! cd ~/Documents/VMs; then
@@ -22,7 +23,6 @@ echo Available Operating Systems:
 quickget PLACEHOLDER | tail -n +3
 echo
 echo
-set -e
 read -p 'Enter an operating system: ' OS
 if ! quickget $OS | grep -q ' - Releases: ' > /dev/null; then
 	echo
@@ -36,7 +36,31 @@ read -p 'Enter a release: ' Ver
 if quickget $OS | grep -q ' - Editions: '; then
 	read -p 'Enter an edition: ' Edition
 	read -p 'Enter a revision: ' Rev
-	mkdir "$OS $Ver $Edition - Revision $Rev"
+		if ! mkdir "$OS $Ver $Edition - Revision $Rev" 2> /dev/null; then
+		echo VM already exists. Choose an option
+		echo 1. Input a different revision.
+		echo 2. Launch the VM anyways.
+		echo "3. Delete the preexisting VM, create a new one in it's place"
+		read input
+		if [[ $input = 1 ]]; then
+			ls ~/Documents/VMs/ | grep "$OS $Ver $Edition"
+			read -p 'New revision: ' Rev
+			if ! mkdir "$OS $Ver $Edition - Revision $Rev" 2> /dev/null; then
+				echo Invalid revision. Exiting.
+				exit
+			fi
+		elif [[ $input = 2 ]]; then
+			cd "$OS $Ver $Edition - Revision $Rev"
+			quickemu -vm $OS-$Ver $Edition.conf
+			exit
+		elif [[ $input = 3 ]]; then
+			rm -rf "$OS $Ver $Edition - Revision $Rev"
+			mkdir "$OS $Ver $Edition - Revision $Rev"
+		else
+			echo Invalid selection. Exiting script.
+			exit
+		fi
+	fi
 	cd "$OS $Ver $Edition - Revision $Rev"
 	if quickget $OS $Ver $Edition ; then
 		echo Success!
@@ -47,7 +71,31 @@ if quickget $OS | grep -q ' - Editions: '; then
 	fi
 else
 	read -p 'Enter a revision: ' Rev
-	mkdir "$OS $Ver - Revision $Rev"
+	if ! mkdir "$OS $Ver - Revision $Rev" 2> /dev/null; then
+		echo VM already exists. Choose an option
+		echo 1. Input a different revision.
+		echo 2. Launch the VM anyways.
+		echo "3. Delete the preexisting VM, create a new one in it's place."
+		read input
+		if [[ $input = 1 ]]; then
+			ls ~/Documents/VMs/ | grep "$OS $Ver"
+			read -p 'New revision: ' Rev
+			if ! mkdir "$OS $Ver - Revision $Rev" 2> /dev/null; then
+				echo Invalid revision. Exiting.
+				exit
+			fi
+		elif [[ $input = 2 ]]; then
+			cd "$OS $Ver - Revision $Rev"
+			quickemu -vm $OS-$Ver.conf
+			exit
+		elif [[ $input = 3 ]]; then
+			rm -rf "$OS $Ver - Revision $Rev"
+			mkdir "$OS $Ver - Revision $Rev"
+		else
+			echo Invalid selection. Exiting script.
+			exit
+		fi
+	fi
 	cd "$OS $Ver - Revision $Rev"
 	if quickget $OS $Ver ; then
 	echo Success!
