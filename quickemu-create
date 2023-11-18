@@ -3,35 +3,22 @@ if whoami | grep -q root; then
 	echo Cannot run this script as root
 	exit
 fi
-if ! cd ~/.local/bin/quickemu 2> /dev/null; then
-	cd ~/.local/bin/
-	git clone https://github.com/quickemu-project/quickemu
-fi
-if ! cd ~/Documents/VMs; then
-	mkdir ~/Documents/VMs
-	echo Created VMs folder.
-fi
-
 export PATH=$PATH:~/.local/bin/quickemu
-# Update repository
-cd ~/.local/bin/quickemu
-if ! git pull | grep 'Already up to date.' > /dev/null; then 
-	echo "Updated quickemu from repository."
-fi
+command -v quickemu || { git clone https://github.com/quickemu-project/quickemu ~/.local/bin/quickemu 2>&1 > /dev/null && echo Installed quickemu in /home/$(whoami)/.local/bin/quickemu; }
+mkdir ~/Documents/VMs 2> /dev/null && echo Created VMs folder at /home/$(whoami)/Documents/VMs.
+rm -rf ~/Documents/VMs/.tmp; mkdir ~/Documents/VMs/.tmp
 cd ~/Documents/VMs/
 echo Available Operating Systems:
-quickget PLACEHOLDER | tail -n +3
-echo -e '\n'
+quickget PLACEHOLDER | tail -n +3; echo -e '\n'
 read -p 'Enter an operating system: ' OS
-if ! quickget $OS | grep -q ' - Releases: ' > /dev/null; then
+osoutput=$(quickget $OS 2> ~/Documents/VMs/.tmp/erroroutput.txt)
+if cat ~/Documents/VMs/.tmp/erroroutput.txt | grep -q "command not found" > /dev/null || ! echo $osoutput | grep -q ' - Releases: ' > /dev/null; then
 	echo -e '\nFailure. Invalid OS.'
 	exit
 fi
-echo
-echo
-quickget $OS | tail -n +2
+echo "$osoutput" | tail -n +2
 read -p 'Enter a release: ' Ver
-if quickget $OS | grep -q ' - Editions: '; then
+if echo "$osoutput" | grep -q ' - Editions: '; then
 	read -p 'Enter an edition: ' Edition
 	read -p 'Enter a revision: ' Rev
 		if ! mkdir "$OS $Ver $Edition - Revision $Rev" 2> /dev/null; then
@@ -103,3 +90,4 @@ else
 		rm -rf /home/liam/Documents/VMs/"$OS $Ver - Revision $Rev"
 	fi
 fi
+rm -rf ~/Documents/VMs/.tmp
