@@ -3,6 +3,7 @@ fullExit() {
   rm -rf ~/Documents/VMs/.tmp
   exit
 }
+trap fullExit SIGINT
 (( $(id -u) == 0 )) && { echo "Cannot run this script as root. Exiting."; exit; }
 export PATH=$PATH:~/.local/bin/quickemu
 command -v quickemu > /dev/null || { git clone https://github.com/quickemu-project/quickemu ~/.local/bin/quickemu 2>&1 > /dev/null && echo Installed quickemu in /home/$(whoami)/.local/bin/quickemu; }
