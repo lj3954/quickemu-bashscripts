@@ -8,4 +8,5 @@
 
 -   Fix major errors caused by script
 -   "Delete" tool
--   GUI?
+-   Prompt user to install quickemu dependencies (if not already installed)
+-   Disk size, RAM, CPU cores (rewrite necessary)
