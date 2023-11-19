@@ -1,0 +1,24 @@
+#!/bin/bash
+(( $(id -u) == 0 )) && { echo "Cannot run this script as root. Exiting."; exit; }
+export PATH=$PATH:~/.local/bin/quickemu
+command -v quickemu > /dev/null || { echo Quickemu is not installed. Exiting.; exit; }
+[[ -d ~/Documents/VMs ]] || { echo VM directory does not exist. Nothing to do.; exit; }
+IFS=$'\n' VMs=( $(ls ~/Documents/VMs) )
+cd ~/Documents/VMs
+[ -z $VMs ] && { echo No VMs found in directory /home/$(whoami)/Documents/VMs. Nothing to do.; exit; }
+echo Available VMs:
+for i in "${!VMs[@]}"; do
+	echo "$((i+1)). ${VMs[$i]}"
+done
+read -p 'Select a VM to delete: ' selection
+if ((selection < 1)) || ((selection > ${#VMs[@]})); then
+    echo "Invalid selection. Exiting."
+    exit
+fi
+read -p 'Are you sure? This will delete the VM. [Y/n] ' delinput
+if [[ "${delinput,,}" == "y" ]] || [[ "${delinput,,}"  == "yes" ]]; then
+    rm -rf ~/Documents/VMs/"${VMs[$selection-1]}"
+else
+    echo Exiting.
+    exit
+fi

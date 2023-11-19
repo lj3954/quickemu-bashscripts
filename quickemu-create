@@ -1,93 +1,63 @@
 #!/bin/bash
-if whoami | grep -q root; then
-	echo Cannot run this script as root
-	exit
-fi
+fullExit() {
+  rm -rf ~/Documents/VMs/.tmp
+  exit
+}
+(( $(id -u) == 0 )) && { echo "Cannot run this script as root. Exiting."; exit; }
 export PATH=$PATH:~/.local/bin/quickemu
-command -v quickemu || { git clone https://github.com/quickemu-project/quickemu ~/.local/bin/quickemu 2>&1 > /dev/null && echo Installed quickemu in /home/$(whoami)/.local/bin/quickemu; }
+command -v quickemu > /dev/null || { git clone https://github.com/quickemu-project/quickemu ~/.local/bin/quickemu 2>&1 > /dev/null && echo Installed quickemu in /home/$(whoami)/.local/bin/quickemu; }
+if [ -d ~/.local/bin/quickemu ]; then
+  git -C ~/.local/bin/quickemu pull 2>&1 | grep -q "changed" && echo Updated quickemu.
+fi
 mkdir ~/Documents/VMs 2> /dev/null && echo Created VMs folder at /home/$(whoami)/Documents/VMs.
 rm -rf ~/Documents/VMs/.tmp; mkdir ~/Documents/VMs/.tmp
-cd ~/Documents/VMs/
 echo Available Operating Systems:
 quickget PLACEHOLDER | tail -n +3; echo -e '\n'
 read -p 'Enter an operating system: ' OS
 osoutput=$(quickget $OS 2> ~/Documents/VMs/.tmp/erroroutput.txt)
 if cat ~/Documents/VMs/.tmp/erroroutput.txt | grep -q "command not found" > /dev/null || ! echo $osoutput | grep -q ' - Releases: ' > /dev/null; then
 	echo -e '\nFailure. Invalid OS.'
-	exit
+	fullExit
 fi
 echo "$osoutput" | tail -n +2
-read -p 'Enter a release: ' Ver
-if echo "$osoutput" | grep -q ' - Editions: '; then
-	read -p 'Enter an edition: ' Edition
-	read -p 'Enter a revision: ' Rev
-		if ! mkdir "$OS $Ver $Edition - Revision $Rev" 2> /dev/null; then
-		echo VM already exists. Choose an option
-		echo 1. Input a different revision.
-		echo 2. Launch the VM anyways.
-		echo "3. Delete the preexisting VM, create a new one in it's place"
-		read input
-		if [[ $input = 1 ]]; then
-			ls ~/Documents/VMs/ | grep "$OS $Ver $Edition"
-			read -p 'New revision: ' Rev
-			if ! mkdir "$OS $Ver $Edition - Revision $Rev" 2> /dev/null; then
-				echo Invalid revision. Exiting.
-				exit
-			fi
-		elif [[ $input = 2 ]]; then
-			cd "$OS $Ver $Edition - Revision $Rev"
-			quickemu -vm $OS-$Ver $Edition.conf
-			exit
-		elif [[ $input = 3 ]]; then
-			rm -rf "$OS $Ver $Edition - Revision $Rev"
-			mkdir "$OS $Ver $Edition - Revision $Rev"
+read -p 'Enter a release: ' Ver && echo "$osoutput" | grep -q $Ver || { echo 'Failure. Invalid release.'; fullExit; }
+echo "$osoutput" | grep -q ' - Editions: ' && { read -p 'Enter an edition (Case Sensitive): ' Edition; echo "$osoutput" | grep -q $Edition || { echo 'Failure. Invalid edition.'; fullExit; }; }
+releaseString="$OS $Ver${Edition:+ $Edition}"
+if [[ -d ~/Documents/VMs/$releaseString ]]; then
+	echo -e "VM already exists.\n1. Create a new revision.\n2. Launch the preexisting VM.\n3. Delete the preexisting VM, create a new one in it's place."
+	read -p 'Choose an option: ' input
+	if [[ $input = 1 ]]; then
+		num=2
+		while [[ -d "~/Documents/VMs/$releaseString - Revision $num" ]]; do
+			num=$((num+1))
+		done
+		releaseString="$releaseString - Revision $num"
+	elif [[ $input = 2 ]]; then
+		cd ~/Documents/VMs/$releaseString
+		quickemu -vm $OS-$Ver${Edition:+-$Edition}.conf
+		fullExit
+	elif [[ $input = 3 ]]; then
+		read -p 'Are you sure? This will delete the preexisting VM. [Y/n] ' delinput
+		if [[ "${delinput,,}" == "y" ]] || [[ "${delinput,,}"  == "yes" ]]; then
+			rm -rf ~/Documents/VMs/"$releaseString"
 		else
-			echo Invalid selection. Exiting script.
-			exit
+			echo Exiting.
+			fullExit
 		fi
-	fi
-	cd "$OS $Ver $Edition - Revision $Rev"
-	if quickget $OS $Ver $Edition ; then
-		echo Success!
-		quickemu -vm $OS-$Ver-$Edition.conf
 	else
-		echo Failure, reverting changes
-		rm -rf /home/liam/Documents/VMs/"$OS $Ver $Edition - Revision $Rev"
-	fi
-else
-	read -p 'Enter a revision: ' Rev
-	if ! mkdir "$OS $Ver - Revision $Rev" 2> /dev/null; then
-		echo VM already exists. Choose an option
-		echo 1. Input a different revision.
-		echo 2. Launch the VM anyways.
-		echo "3. Delete the preexisting VM, create a new one in it's place."
-		read input
-		if [[ $input = 1 ]]; then
-			ls ~/Documents/VMs/ | grep "$OS $Ver"
-			read -p 'New revision: ' Rev
-			if ! mkdir "$OS $Ver - Revision $Rev" 2> /dev/null; then
-				echo Invalid revision. Exiting.
-				exit
-			fi
-		elif [[ $input = 2 ]]; then
-			cd "$OS $Ver - Revision $Rev"
-			quickemu -vm $OS-$Ver.conf
-			exit
-		elif [[ $input = 3 ]]; then
-			rm -rf "$OS $Ver - Revision $Rev"
-			mkdir "$OS $Ver - Revision $Rev"
-		else
-			echo Invalid selection. Exiting script.
-			exit
-		fi
-	fi
-	cd "$OS $Ver - Revision $Rev"
-	if quickget $OS $Ver ; then
-	echo Success!
-	quickemu -vm $OS-$Ver.conf
-	else
-		echo Failure, reverting changes
-		rm -rf /home/liam/Documents/VMs/"$OS $Ver - Revision $Rev"
+		echo Invalid selection. Exiting.
+		fullExit
 	fi
 fi
-rm -rf ~/Documents/VMs/.tmp
+read -p '(OPTIONAL) Enter the disk size for this VM (in GB): ' diskSize
+diskSize=$(echo "$diskSize" | tr -d '[[:alpha:]]')
+read -p '(OPTIONAL) Enter the amount of RAM you would like to allocate (in GB): ' ramSize
+ramSize=$(echo "$ramSize" | tr -d '[[:alpha:]]')
+read -p '(OPTIONAL) Enter the number of CPU cores you would like to allocate: ' cpuCores
+mkdir ~/Documents/VMs/"$releaseString" && cd ~/Documents/VMs/"$releaseString"
+quickget ${OS,,} $Ver ${Edition:+$Edition}
+[ -z $cpuCores ] ||  echo "cpu_cores=$cpuCores" >> ${OS,,}-$Ver${Edition:+-$Edition}.conf
+[ -z $ramSize ] || echo "ram=$ramSize"G >> ${OS,,}-$Ver${Edition:+-$Edition}.conf
+[ -z $diskSize ] || echo "disk_size=$diskSize"G >> ${OS,,}-$Ver${Edition:+-$Edition}.conf
+quickemu -vm ${OS,,}-$Ver${Edition:+-$Edition}.conf
+fullExit

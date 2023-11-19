@@ -1,23 +1,11 @@
 #!/bin/bash
-if whoami | grep -q root; then
-	echo Cannot run this script as root
-	exit
-fi
-if ! cd ~/.local/bin/quickemu; then
-	echo Quickemu not found in expected directory. Run quickemu-create to fix the issue.
-	exit
-fi
-if ! cd ~/Documents/VMs; then
-	mkdir ~/Documents/VMs
-	echo Created VMs folder.
-fi
+(( $(id -u) == 0 )) && { echo "Cannot run this script as root. Exiting."; exit; }
 export PATH=$PATH:~/.local/bin/quickemu
+command -v quickemu > /dev/null || { echo Quickemu is not installed. Install quickemu through your package manager or run quickemu-create.; exit; }
+mkdir ~/Documents/VMs 2> /dev/null && echo Created VMs folder at /home/$(whoami)/Documents/VMs.
 IFS=$'\n' VMs=( $(ls ~/Documents/VMs) )
 cd ~/Documents/VMs
-if [ -z $VMs ]; then
-    echo No VMs found. Run quickemu-create to create one.
-    exit
-fi
+[ -z $VMs ] && { echo No VMs found. Run quickemu-create to create one.; exit; }
 echo Available VMs:
 for i in "${!VMs[@]}"; do
 	echo "$((i+1)). ${VMs[$i]}"
