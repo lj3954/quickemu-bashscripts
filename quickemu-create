@@ -1,4 +1,5 @@
 #!/bin/bash
+[ -d ~/.local/bin/quickemu ] && { git -C ~/.local/bin/quickemu pull 2>&1 | grep -q "changed" && echo Updated quickemu.; } &
 fullExit() {
   rm -rf ~/Documents/VMs/.tmp
   exit
@@ -7,12 +8,10 @@ trap fullExit SIGINT
 (( $(id -u) == 0 )) && { echo "Cannot run this script as root. Exiting."; exit; }
 export PATH=$PATH:~/.local/bin/quickemu
 command -v quickemu > /dev/null || { git clone https://github.com/quickemu-project/quickemu ~/.local/bin/quickemu 2>&1 > /dev/null && echo Installed quickemu in /home/$(whoami)/.local/bin/quickemu; }
-if [ -d ~/.local/bin/quickemu ]; then
-  git -C ~/.local/bin/quickemu pull 2>&1 | grep -q "changed" && echo Updated quickemu.
-fi
 mkdir ~/Documents/VMs 2> /dev/null && echo Created VMs folder at /home/$(whoami)/Documents/VMs.
 rm -rf ~/Documents/VMs/.tmp; mkdir ~/Documents/VMs/.tmp
 echo Available Operating Systems:
+wait
 quickget PLACEHOLDER | tail -n +3; echo -e '\n'
 read -p 'Enter an operating system: ' OS
 OSRemoveSpace=${OS// /}
