@@ -15,3 +15,7 @@ curl https://raw.githubusercontent.com/lj3954/quickemu-bashscripts/main/quickemu
 
 -   Prompt user to install quickemu dependencies (if not already installed)
 -   TBD
+
+## Configuration
+
+quickemu-create will check what operating systems are available without waiting for git pull to complete (which will update quickemu if it's not already up to date). This will result in the script loading much faster, but may result in instabililty on slower internet connections. This can be overridden by creating a file at ~/.config/quickemu-bashscripts/quickemu-create.conf and setting WaitForUpdate to true. You can also block the script from automatically updating quickemu by setting SkipUpdate to true.

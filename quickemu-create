@@ -1,5 +1,6 @@
 #!/bin/bash
-[ -d ~/.local/bin/quickemu ] && { git -C ~/.local/bin/quickemu pull 2>&1 | grep -q "changed" && echo Updated quickemu.; } &
+source ~/.config/quickemu-bashscripts/quickemu-create.conf 2> /dev/null
+[[ -d ~/.local/bin/quickemu && "$SkipUpdate" != "true" ]] && { git -C ~/.local/bin/quickemu pull 2>&1 | grep -q "changed" && echo Updated quickemu.; } &
 fullExit() {
   rm -rf ~/Documents/VMs/.tmp
   exit
@@ -15,10 +16,11 @@ command -v quickemu > /dev/null || { git clone https://github.com/quickemu-proje
 mkdir ~/Documents/VMs 2> /dev/null && echo Created VMs folder at /home/$(whoami)/Documents/VMs.
 rm -rf ~/Documents/VMs/.tmp; mkdir ~/Documents/VMs/.tmp
 echo Available Operating Systems:
-wait
+[[ "$WaitForUpdate" == "true" ]] && wait
 quickget PLACEHOLDER | tail -n +3; echo -e '\n'
 read -p 'Enter an operating system: ' OS
 OSRemoveSpace=${OS// /}
+wait
 osoutput=$(quickget $OSRemoveSpace 2> ~/Documents/VMs/.tmp/erroroutput.txt)
 if cat ~/Documents/VMs/.tmp/erroroutput.txt | grep -q "command not found" > /dev/null || ! echo $osoutput | grep -q ' - Releases: ' > /dev/null; then
 	echo -e '\nFailure. Invalid OS.'
