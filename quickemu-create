@@ -25,8 +25,8 @@ if cat ~/Documents/VMs/.tmp/erroroutput.txt | grep -q "command not found" > /dev
 	fullExit
 fi
 echo "$osoutput" | tail -n +2
-read -p 'Enter a release: ' Ver && echo "${osoutput,,}" | grep -q ${Ver,,} && correctVer=$(echo $osoutput | grep -io $Ver | awk '{print $1; exit}') || { echo 'Failure. Invalid release.'; fullExit; }
-echo "$osoutput" | grep -q ' - Editions: ' && { read -p 'Enter an edition: ' Edition; echo "${osoutput,,}" | grep -q ${Edition,,} && correctEdition=$(echo $osoutput | grep -io $Edition | awk '{print $1; exit}') || { echo 'Failure. Invalid edition.'; fullExit; }; }
+read -p 'Enter a release: ' Ver && echo "${osoutput,,}" | grep -qw "${Ver,,}" && correctVer=$(echo $osoutput | grep -io "$Ver" | awk '{print $1; exit}') || { echo 'Failure. Invalid release.'; fullExit; }
+echo "$osoutput" | grep -q ' - Editions: ' && { read -p 'Enter an edition: ' Edition; echo "${osoutput,,}" | grep -qw "${Edition,,}" && correctEdition=$(echo $osoutput | grep -io $Edition | awk '{print $1; exit}') || { echo 'Failure. Invalid edition.'; fullExit; }; }
 releaseString="$OS $Ver${Edition:+ $Edition}"
 if [[ -d ~/Documents/VMs/$releaseString ]]; then
 	echo -e "VM already exists.\n1. Create a new revision.\n2. Launch the preexisting VM.\n3. Delete the preexisting VM, create a new one in it's place."
