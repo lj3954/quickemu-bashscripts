@@ -15,14 +15,15 @@ rm -rf ~/Documents/VMs/.tmp; mkdir ~/Documents/VMs/.tmp
 echo Available Operating Systems:
 quickget PLACEHOLDER | tail -n +3; echo -e '\n'
 read -p 'Enter an operating system: ' OS
-osoutput=$(quickget $OS 2> ~/Documents/VMs/.tmp/erroroutput.txt)
+OSRemoveSpace=${OS// /}
+osoutput=$(quickget $OSRemoveSpace 2> ~/Documents/VMs/.tmp/erroroutput.txt)
 if cat ~/Documents/VMs/.tmp/erroroutput.txt | grep -q "command not found" > /dev/null || ! echo $osoutput | grep -q ' - Releases: ' > /dev/null; then
 	echo -e '\nFailure. Invalid OS.'
 	fullExit
 fi
 echo "$osoutput" | tail -n +2
-read -p 'Enter a release: ' Ver && echo "$osoutput" | grep -q $Ver || { echo 'Failure. Invalid release.'; fullExit; }
-echo "$osoutput" | grep -q ' - Editions: ' && { read -p 'Enter an edition (Case Sensitive): ' Edition; echo "$osoutput" | grep -q $Edition || { echo 'Failure. Invalid edition.'; fullExit; }; }
+read -p 'Enter a release: ' Ver && echo "${osoutput,,}" | grep -q ${Ver,,} && correctVer=$(echo $osoutput | grep -io $Ver) || { echo 'Failure. Invalid release.'; fullExit; }
+echo "$osoutput" | grep -q ' - Editions: ' && { read -p 'Enter an edition: ' Edition; echo "${osoutput,,}" | grep -q ${Edition,,} && correctEdition=$(echo $osoutput | grep -io $Edition) || { echo 'Failure. Invalid edition.'; fullExit; }; }
 releaseString="$OS $Ver${Edition:+ $Edition}"
 if [[ -d ~/Documents/VMs/$releaseString ]]; then
 	echo -e "VM already exists.\n1. Create a new revision.\n2. Launch the preexisting VM.\n3. Delete the preexisting VM, create a new one in it's place."
@@ -34,8 +35,8 @@ if [[ -d ~/Documents/VMs/$releaseString ]]; then
 		done
 		releaseString="$releaseString - Revision $num"
 	elif [[ $input = 2 ]]; then
-		cd ~/Documents/VMs/$releaseString
-		quickemu -vm $OS-$Ver${Edition:+-$Edition}.conf
+		cd ~/Documents/VMs/"$releaseString"
+		quickemu -vm ${OSRemoveSpace,,}-${correctVer,,}${correctEdition:+-$correctEdition}.conf
 		fullExit
 	elif [[ $input = 3 ]]; then
 		read -p 'Are you sure? This will delete the preexisting VM. [y/N] ' delinput
@@ -56,9 +57,9 @@ read -p '(OPTIONAL) Enter the amount of RAM you would like to allocate (in GB): 
 ramSize=$(echo "$ramSize" | tr -d '[[:alpha:]]')
 read -p '(OPTIONAL) Enter the number of CPU cores you would like to allocate: ' cpuCores
 mkdir ~/Documents/VMs/"$releaseString" && cd ~/Documents/VMs/"$releaseString"
-quickget ${OS,,} $Ver ${Edition:+$Edition}
-[ -z $cpuCores ] ||  echo "cpu_cores=$cpuCores" >> ${OS,,}-$Ver${Edition:+-$Edition}.conf
-[ -z $ramSize ] || echo "ram=$ramSize"G >> ${OS,,}-$Ver${Edition:+-$Edition}.conf
-[ -z $diskSize ] || echo "disk_size=$diskSize"G >> ${OS,,}-$Ver${Edition:+-$Edition}.conf
-quickemu -vm ${OS,,}-$Ver${Edition:+-$Edition}.conf
+quickget ${OSRemoveSpace,,} ${correctVer,,} ${correctEdition:+$correctEdition}
+[ -z $cpuCores ] ||  echo "cpu_cores=$cpuCores" >> ${OS,,}-$correctVer${correctEdition:+-$correctEdition}.conf
+[ -z $ramSize ] || echo "ram=$ramSize"G >> ${OS,,}-$correctVer${correctEdition:+-$correctEdition}.conf
+[ -z $diskSize ] || echo "disk_size=$diskSize"G >> ${OS,,}-$correctVer${correctEdition:+-$correctEdition}.conf
+quickemu -vm ${OSRemoveSpace,,}-${correctVer,,}${correctEdition:+-$correctEdition}.conf
 fullExit
