@@ -38,7 +38,7 @@ if [[ -d ~/Documents/VMs/$releaseString ]]; then
 		quickemu -vm $OS-$Ver${Edition:+-$Edition}.conf
 		fullExit
 	elif [[ $input = 3 ]]; then
-		read -p 'Are you sure? This will delete the preexisting VM. [Y/n] ' delinput
+		read -p 'Are you sure? This will delete the preexisting VM. [y/N] ' delinput
 		if [[ "${delinput,,}" == "y" ]] || [[ "${delinput,,}"  == "yes" ]]; then
 			rm -rf ~/Documents/VMs/"$releaseString"
 		else
