@@ -4,6 +4,10 @@ fullExit() {
   rm -rf ~/Documents/VMs/.tmp
   exit
 }
+deleteVMDirectory() {
+  rm -rf ~/Documents/VMs/"$releaseString"
+  fullExit
+}
 trap fullExit SIGINT
 (( $(id -u) == 0 )) && { echo "Cannot run this script as root. Exiting."; exit; }
 export PATH=$PATH:~/.local/bin/quickemu
@@ -21,8 +25,8 @@ if cat ~/Documents/VMs/.tmp/erroroutput.txt | grep -q "command not found" > /dev
 	fullExit
 fi
 echo "$osoutput" | tail -n +2
-read -p 'Enter a release: ' Ver && echo "${osoutput,,}" | grep -q ${Ver,,} && correctVer=$(echo $osoutput | grep -io $Ver) || { echo 'Failure. Invalid release.'; fullExit; }
-echo "$osoutput" | grep -q ' - Editions: ' && { read -p 'Enter an edition: ' Edition; echo "${osoutput,,}" | grep -q ${Edition,,} && correctEdition=$(echo $osoutput | grep -io $Edition) || { echo 'Failure. Invalid edition.'; fullExit; }; }
+read -p 'Enter a release: ' Ver && echo "${osoutput,,}" | grep -q ${Ver,,} && correctVer=$(echo $osoutput | grep -io $Ver | awk '{print $1; exit}') || { echo 'Failure. Invalid release.'; fullExit; }
+echo "$osoutput" | grep -q ' - Editions: ' && { read -p 'Enter an edition: ' Edition; echo "${osoutput,,}" | grep -q ${Edition,,} && correctEdition=$(echo $osoutput | grep -io $Edition | awk '{print $1; exit}') || { echo 'Failure. Invalid edition.'; fullExit; }; }
 releaseString="$OS $Ver${Edition:+ $Edition}"
 if [[ -d ~/Documents/VMs/$releaseString ]]; then
 	echo -e "VM already exists.\n1. Create a new revision.\n2. Launch the preexisting VM.\n3. Delete the preexisting VM, create a new one in it's place."
@@ -56,9 +60,11 @@ read -p '(OPTIONAL) Enter the amount of RAM you would like to allocate (in GB): 
 ramSize=$(echo "$ramSize" | tr -d '[[:alpha:]]')
 read -p '(OPTIONAL) Enter the number of CPU cores you would like to allocate: ' cpuCores
 mkdir ~/Documents/VMs/"$releaseString" && cd ~/Documents/VMs/"$releaseString"
+trap deleteVMDirectory SIGINT
 quickget ${OSRemoveSpace,,} ${correctVer,,} ${correctEdition:+$correctEdition}
 [ -z $cpuCores ] ||  echo "cpu_cores=$cpuCores" >> ${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.conf
 [ -z $ramSize ] || echo "ram=$ramSize"G >> ${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.conf
 [ -z $diskSize ] || echo "disk_size=$diskSize"G >> ${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.conf
 quickemu -vm ${OSRemoveSpace,,}-${correctVer,,}${correctEdition:+-$correctEdition}.conf
+echo quickemu -vm ${OSRemoveSpace,,}-${correctVer,,}${correctEdition:+-$correctEdition}.conf
 fullExit
