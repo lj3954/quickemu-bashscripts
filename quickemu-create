@@ -58,8 +58,8 @@ ramSize=$(echo "$ramSize" | tr -d '[[:alpha:]]')
 read -p '(OPTIONAL) Enter the number of CPU cores you would like to allocate: ' cpuCores
 mkdir ~/Documents/VMs/"$releaseString" && cd ~/Documents/VMs/"$releaseString"
 quickget ${OSRemoveSpace,,} ${correctVer,,} ${correctEdition:+$correctEdition}
-[ -z $cpuCores ] ||  echo "cpu_cores=$cpuCores" >> ${OS,,}-$correctVer${correctEdition:+-$correctEdition}.conf
-[ -z $ramSize ] || echo "ram=$ramSize"G >> ${OS,,}-$correctVer${correctEdition:+-$correctEdition}.conf
-[ -z $diskSize ] || echo "disk_size=$diskSize"G >> ${OS,,}-$correctVer${correctEdition:+-$correctEdition}.conf
+[ -z $cpuCores ] ||  echo "cpu_cores=$cpuCores" >> ${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.conf
+[ -z $ramSize ] || echo "ram=$ramSize"G >> ${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.conf
+[ -z $diskSize ] || echo "disk_size=$diskSize"G >> ${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.conf
 quickemu -vm ${OSRemoveSpace,,}-${correctVer,,}${correctEdition:+-$correctEdition}.conf
 fullExit
