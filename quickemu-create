@@ -1,13 +1,13 @@
 #!/bin/bash
+#Exit if run as root
 (( $(id -u) == 0 )) && { echo "Cannot run this script as root. Exiting."; exit; }
 source ~/.config/quickemu-bashscripts/quickemu-create.conf 2> /dev/null
 fullExit() {
-  rm -rf ~/Documents/VMs/.tmp
-  echo
+  rm -rf "$VMDirectory"/.tmp
   exit
 }
 deleteVMDirectory() {
-  rm -rf ~/Documents/VMs/"$releaseString"
+  rm -rf "$VMDirectory"/"$releaseString"
   fullExit
 }
 specInput() {
@@ -18,12 +18,16 @@ specInput() {
 	read -p '(OPTIONAL) Enter the number of CPU cores you would like to allocate: ' cpuCores
 	[ -z "$cpuCores" ] || { [[ $cpuCores =~ ^[0-9]+$ && $cpuCores > 0 ]] || { echo 'CPU Core count must be a whole number. Ignoring.' && cpuCores=""; }; }
 }
+startVM() {
+	quickemu --vm "$configFile"
+}
 configSpec() {
 	[ -z "$cpuCores" ] || echo "cpu_cores=$cpuCores" >> "$configFile"
 	[ -z "$ramSize" ] || echo "ram=$ramSize"G >> "$configFile"
 	[ -z "$diskSize" ] || echo "disk_size=$diskSize"G >> "$configFile"
 }
-createCustomConfig() {
+createCustom() {
+	mkdir "$VMDirectory"/"$releaseString" && trap deleteVMDirectory SIGINT && cd "$VMDirectory"/"$releaseString" && mkdir "$VMDirectory"/"$releaseString"/"$customName"
 	cat << EOF > "$configFile"
 #!$(which quickemu) --vm
 guest_os="${GuestOS,,}"
@@ -37,18 +41,18 @@ existingVMResponse() {
 	read -p 'Choose an option: ' input
 	if [[ $input = 1 ]]; then
 		num=2
-		while [[ -d ~/Documents/VMs/"$releaseString - Revision $num" ]]; do
+		while [[ -d "$VMDirectory"/"$releaseString - Revision $num" ]]; do
 			num=$((num+1))
 		done
 		releaseString="$releaseString - Revision $num"
 	elif [[ $input = 2 ]]; then
-		cd ~/Documents/VMs/"$releaseString"
-		quickemu -vm "$configFile"
+		cd "$VMDirectory"/"$releaseString"
+		startVM
 		fullExit
 	elif [[ $input = 3 ]]; then
 		read -p 'Are you sure? This will delete the preexisting VM. [y/N] ' delinput
 		if [[ "${delinput,,}" == "y" ]] || [[ "${delinput,,}"  == "yes" ]]; then
-			rm -rf ~/Documents/VMs/"$releaseString"
+			rm -rf "$VMDirectory"/"$releaseString"
 		else
 			echo Exiting.
 			fullExit
@@ -61,35 +65,30 @@ existingVMResponse() {
 customInput() {
 	read -p 'Enter a name for this custom VM: ' releaseString && [ -z "$releaseString" ] && { echo 'Failure. You must input a name.'; fullExit; }
 	customName="${releaseString// /-}" && customName="${customName,,}" && configFile="${customName,,// /-}.conf"
-	[[ -d ~/Documents/VMs/"$releaseString" ]] && existingVMResponse
-	read -p 'Enter the path to the ISO (or drag it into the terminal): ' ISO && [ -z "$ISO" ] && { echo 'Failure. You must input an ISO.'; fullExit; } || ISO=$(realpath "$(echo "$ISO" | tr -d "'")")
-	[ -f "$ISO" ] || { echo 'Failure. Invalid path.'; fullExit; }
+	[[ -d "$VMDirectory"/"$releaseString" ]] && existingVMResponse
+	read -p 'Enter the path to the ISO (or drag it into the terminal): ' ISO && ISO=$(realpath -e "$(echo "$ISO" | tr -d "'")" 2> /dev/null) || { echo 'Failure. Invalid path.'; fullExit; }
 	echo 'Choose the Operating System - e.g.,  Windows, Linux, FreeBSD. Default: Linux' && read GuestOS && [ -z "$GuestOS" ] && GuestOS="Linux"
 }
 
+[[ -z "$VMDirectory" ]] && VMDirectory=~/Documents/VMs
 [[ -d ~/.local/bin/quickemu && "$SkipUpdate" != "true" ]] && { git -C ~/.local/bin/quickemu pull 2>&1 | grep -q "changed" && echo Updated quickemu.; } &
 trap fullExit SIGINT
 export PATH=$PATH:~/.local/bin/quickemu
 command -v quickemu > /dev/null || { git clone https://github.com/quickemu-project/quickemu ~/.local/bin/quickemu 2>&1 > /dev/null && echo Installed quickemu in /home/$(whoami)/.local/bin/quickemu; }
-mkdir ~/Documents/VMs 2> /dev/null && echo Created VMs folder at /home/$(whoami)/Documents/VMs.
-rm -rf ~/Documents/VMs/.tmp; mkdir ~/Documents/VMs/.tmp
+[ -d "$VMDirectory" ] || { mkdir "$VMDirectory" 2> /dev/null && echo Created VMs folder at "$VMDirectory". || { echo Failed to create VM Folder at "$VMDirectory". Exiting.; fullExit; }; }
+rm -rf "$VMDirectory"/.tmp; mkdir "$VMDirectory"/.tmp
 echo -e 'Available Operating Systems:\n'
 [[ "$WaitForUpdate" == "true" ]] && wait
 echo $(quickget PLACEHOLDER | tail -n +3; echo custom) | tr ' ' '\n' | sort | paste -sd ' ' -
 read -p $'\nEnter an operating system: ' OS
 OSRemoveSpace=${OS// /}
+
+[[ "${OSRemoveSpace,,}" == "custom" ]] && { customInput && specInput && createCustom && configSpec && startVM; fullExit; }
+
+#Wait for quickemu to finish updating, if applicable. 
 wait
-
-if [[ "${OSRemoveSpace,,}" == "custom" ]]; then
-	customInput
-	mkdir ~/Documents/VMs/"$releaseString" && trap deleteVMDirectory SIGINT && cd ~/Documents/VMs/"$releaseString" && mkdir ~/Documents/VMs/"$releaseString"/"$customName" || { echo 'Failure. VM already exists. Exiting.'; fullExit; }
-	createCustomConfig && specInput && configSpec
-	quickemu --vm "$configFile"
-	fullExit
-fi
-
-osoutput=$(quickget $OSRemoveSpace 2> ~/Documents/VMs/.tmp/erroroutput.txt)
-if [ -z "$OS" ] || cat ~/Documents/VMs/.tmp/erroroutput.txt | grep -q "command not found" > /dev/null || ! echo $osoutput | grep -q ' - Releases: ' > /dev/null; then
+osoutput=$(quickget $OSRemoveSpace 2> "$VMDirectory"/.tmp/erroroutput.txt)
+if [ -z "$OS" ] || cat "$VMDirectory"/.tmp/erroroutput.txt | grep -q "command not found" > /dev/null || ! echo $osoutput | grep -q ' - Releases: ' > /dev/null; then
 	echo -e '\nFailure. Invalid OS.'
 	fullExit
 fi
@@ -98,10 +97,10 @@ read -p 'Enter a release: ' Ver && echo "${osoutput,,}" | grep -qw "${Ver,,}" &&
 echo "$osoutput" | grep -q ' - Editions: ' && { read -p 'Enter an edition: ' Edition; echo "${osoutput,,}" | grep -qw "${Edition,,}" && correctEdition=$(echo $osoutput | grep -io $Edition | awk '{print $1; exit}') || { echo 'Failure. Invalid edition.'; fullExit; }; }
 releaseString="$OS $Ver${Edition:+ $Edition}"
 configFile="${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.conf"
-[[ -d ~/Documents/VMs/"$releaseString" ]] && existingVMResponse
+[[ -d "$VMDirectory"/"$releaseString" ]] && existingVMResponse
 specInput
-mkdir ~/Documents/VMs/"$releaseString" && cd ~/Documents/VMs/"$releaseString" && trap deleteVMDirectory SIGINT
+mkdir "$VMDirectory"/"$releaseString" && cd "$VMDirectory"/"$releaseString" && trap deleteVMDirectory SIGINT
 quickget ${OSRemoveSpace,,} ${correctVer,,} ${correctEdition:+$correctEdition}
 configSpec
-quickemu -vm "$configFile"
+startVM
 fullExit
