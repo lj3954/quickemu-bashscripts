@@ -1,47 +1,49 @@
 #!/bin/bash
+(( $(id -u) == 0 )) && { echo "Cannot run this script as root. Exiting."; exit; }
 source ~/.config/quickemu-bashscripts/quickemu-create.conf 2> /dev/null
-[[ -d ~/.local/bin/quickemu && "$SkipUpdate" != "true" ]] && { git -C ~/.local/bin/quickemu pull 2>&1 | grep -q "changed" && echo Updated quickemu.; } &
 fullExit() {
   rm -rf ~/Documents/VMs/.tmp
+  echo
   exit
 }
 deleteVMDirectory() {
   rm -rf ~/Documents/VMs/"$releaseString"
   fullExit
 }
-trap fullExit SIGINT
-(( $(id -u) == 0 )) && { echo "Cannot run this script as root. Exiting."; exit; }
-export PATH=$PATH:~/.local/bin/quickemu
-command -v quickemu > /dev/null || { git clone https://github.com/quickemu-project/quickemu ~/.local/bin/quickemu 2>&1 > /dev/null && echo Installed quickemu in /home/$(whoami)/.local/bin/quickemu; }
-mkdir ~/Documents/VMs 2> /dev/null && echo Created VMs folder at /home/$(whoami)/Documents/VMs.
-rm -rf ~/Documents/VMs/.tmp; mkdir ~/Documents/VMs/.tmp
-echo Available Operating Systems:
-[[ "$WaitForUpdate" == "true" ]] && wait
-quickget PLACEHOLDER | tail -n +3; echo -e '\n'
-read -p 'Enter an operating system: ' OS
-OSRemoveSpace=${OS// /}
-wait
-osoutput=$(quickget $OSRemoveSpace 2> ~/Documents/VMs/.tmp/erroroutput.txt)
-if cat ~/Documents/VMs/.tmp/erroroutput.txt | grep -q "command not found" > /dev/null || ! echo $osoutput | grep -q ' - Releases: ' > /dev/null; then
-	echo -e '\nFailure. Invalid OS.'
-	fullExit
-fi
-echo "$osoutput" | tail -n +2
-read -p 'Enter a release: ' Ver && echo "${osoutput,,}" | grep -qw "${Ver,,}" && correctVer=$(echo $osoutput | grep -io "$Ver" | awk '{print $1; exit}') || { echo 'Failure. Invalid release.'; fullExit; }
-echo "$osoutput" | grep -q ' - Editions: ' && { read -p 'Enter an edition: ' Edition; echo "${osoutput,,}" | grep -qw "${Edition,,}" && correctEdition=$(echo $osoutput | grep -io $Edition | awk '{print $1; exit}') || { echo 'Failure. Invalid edition.'; fullExit; }; }
-releaseString="$OS $Ver${Edition:+ $Edition}"
-if [[ -d ~/Documents/VMs/$releaseString ]]; then
+specInput() {
+	read -p '(OPTIONAL) Enter the disk size for this VM (in GB): ' diskSize
+	[ -z "$diskSize" ] || { diskSize=$(echo "$diskSize" | tr -d '[[:alpha:]]') && [[ $diskSize > 0 ]] || { echo 'Invalid disk size. Ignoring' && diskSize=""; }; }
+	read -p '(OPTIONAL) Enter the amount of RAM you would like to allocate (in GB): ' ramSize
+	[ -z "$ramSize" ] || { ramSize=$(echo "$ramSize" | tr -d '[[:alpha:]]') && [[ $ramSize > 0 ]] || { echo 'Invalid RAM amount. Ignoring.' && ramSize=""; }; }
+	read -p '(OPTIONAL) Enter the number of CPU cores you would like to allocate: ' cpuCores
+	[ -z "$cpuCores" ] || { [[ $cpuCores =~ ^[0-9]+$ && $cpuCores > 0 ]] || { echo 'CPU Core count must be a whole number. Ignoring.' && cpuCores=""; }; }
+}
+configSpec() {
+	[ -z "$cpuCores" ] || echo "cpu_cores=$cpuCores" >> "$configFile"
+	[ -z "$ramSize" ] || echo "ram=$ramSize"G >> "$configFile"
+	[ -z "$diskSize" ] || echo "disk_size=$diskSize"G >> "$configFile"
+}
+createCustomConfig() {
+	cat << EOF > "$configFile"
+#!$(which quickemu) --vm
+guest_os="${GuestOS,,}"
+disk_img="$customName/disk.qcow2"
+iso="$ISO"
+EOF
+	chmod u+x "$configFile"
+}
+existingVMResponse() {
 	echo -e "VM already exists.\n1. Create a new revision.\n2. Launch the preexisting VM.\n3. Delete the preexisting VM, create a new one in it's place."
 	read -p 'Choose an option: ' input
 	if [[ $input = 1 ]]; then
 		num=2
-		while [[ -d "~/Documents/VMs/$releaseString - Revision $num" ]]; do
+		while [[ -d ~/Documents/VMs/"$releaseString - Revision $num" ]]; do
 			num=$((num+1))
 		done
 		releaseString="$releaseString - Revision $num"
 	elif [[ $input = 2 ]]; then
 		cd ~/Documents/VMs/"$releaseString"
-		quickemu -vm ${OSRemoveSpace,,}-${correctVer,,}${correctEdition:+-$correctEdition}.conf
+		quickemu -vm "$configFile"
 		fullExit
 	elif [[ $input = 3 ]]; then
 		read -p 'Are you sure? This will delete the preexisting VM. [y/N] ' delinput
@@ -55,18 +57,51 @@ if [[ -d ~/Documents/VMs/$releaseString ]]; then
 		echo Invalid selection. Exiting.
 		fullExit
 	fi
+}
+customInput() {
+	read -p 'Enter a name for this custom VM: ' releaseString && [ -z "$releaseString" ] && { echo 'Failure. You must input a name.'; fullExit; }
+	customName="${releaseString// /-}" && customName="${customName,,}" && configFile="${customName,,// /-}.conf"
+	[[ -d ~/Documents/VMs/"$releaseString" ]] && existingVMResponse
+	read -p 'Enter the path to the ISO (or drag it into the terminal): ' ISO && [ -z "$ISO" ] && { echo 'Failure. You must input an ISO.'; fullExit; } || ISO=$(realpath "$(echo "$ISO" | tr -d "'")")
+	[ -f "$ISO" ] || { echo 'Failure. Invalid path.'; fullExit; }
+	echo 'Choose the Operating System - e.g.,  Windows, Linux, FreeBSD. Default: Linux' && read GuestOS && [ -z "$GuestOS" ] && GuestOS="Linux"
+}
+
+[[ -d ~/.local/bin/quickemu && "$SkipUpdate" != "true" ]] && { git -C ~/.local/bin/quickemu pull 2>&1 | grep -q "changed" && echo Updated quickemu.; } &
+trap fullExit SIGINT
+export PATH=$PATH:~/.local/bin/quickemu
+command -v quickemu > /dev/null || { git clone https://github.com/quickemu-project/quickemu ~/.local/bin/quickemu 2>&1 > /dev/null && echo Installed quickemu in /home/$(whoami)/.local/bin/quickemu; }
+mkdir ~/Documents/VMs 2> /dev/null && echo Created VMs folder at /home/$(whoami)/Documents/VMs.
+rm -rf ~/Documents/VMs/.tmp; mkdir ~/Documents/VMs/.tmp
+echo -e 'Available Operating Systems:\n'
+[[ "$WaitForUpdate" == "true" ]] && wait
+echo $(quickget PLACEHOLDER | tail -n +3; echo custom) | tr ' ' '\n' | sort | paste -sd ' ' -
+read -p $'\nEnter an operating system: ' OS
+OSRemoveSpace=${OS// /}
+wait
+
+if [[ "${OSRemoveSpace,,}" == "custom" ]]; then
+	customInput
+	mkdir ~/Documents/VMs/"$releaseString" && trap deleteVMDirectory SIGINT && cd ~/Documents/VMs/"$releaseString" && mkdir ~/Documents/VMs/"$releaseString"/"$customName" || { echo 'Failure. VM already exists. Exiting.'; fullExit; }
+	createCustomConfig && specInput && configSpec
+	quickemu --vm "$configFile"
+	fullExit
 fi
-read -p '(OPTIONAL) Enter the disk size for this VM (in GB): ' diskSize
-diskSize=$(echo "$diskSize" | tr -d '[[:alpha:]]')
-read -p '(OPTIONAL) Enter the amount of RAM you would like to allocate (in GB): ' ramSize
-ramSize=$(echo "$ramSize" | tr -d '[[:alpha:]]')
-read -p '(OPTIONAL) Enter the number of CPU cores you would like to allocate: ' cpuCores
-mkdir ~/Documents/VMs/"$releaseString" && cd ~/Documents/VMs/"$releaseString"
-trap deleteVMDirectory SIGINT
+
+osoutput=$(quickget $OSRemoveSpace 2> ~/Documents/VMs/.tmp/erroroutput.txt)
+if [ -z "$OS" ] || cat ~/Documents/VMs/.tmp/erroroutput.txt | grep -q "command not found" > /dev/null || ! echo $osoutput | grep -q ' - Releases: ' > /dev/null; then
+	echo -e '\nFailure. Invalid OS.'
+	fullExit
+fi
+echo "$osoutput" | tail -n +2
+read -p 'Enter a release: ' Ver && echo "${osoutput,,}" | grep -qw "${Ver,,}" && correctVer=$(echo $osoutput | grep -io "$Ver" | awk '{print $1; exit}') || { echo 'Failure. Invalid release.'; fullExit; }
+echo "$osoutput" | grep -q ' - Editions: ' && { read -p 'Enter an edition: ' Edition; echo "${osoutput,,}" | grep -qw "${Edition,,}" && correctEdition=$(echo $osoutput | grep -io $Edition | awk '{print $1; exit}') || { echo 'Failure. Invalid edition.'; fullExit; }; }
+releaseString="$OS $Ver${Edition:+ $Edition}"
+configFile="${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.conf"
+[[ -d ~/Documents/VMs/"$releaseString" ]] && existingVMResponse
+specInput
+mkdir ~/Documents/VMs/"$releaseString" && cd ~/Documents/VMs/"$releaseString" && trap deleteVMDirectory SIGINT
 quickget ${OSRemoveSpace,,} ${correctVer,,} ${correctEdition:+$correctEdition}
-[ -z $cpuCores ] ||  echo "cpu_cores=$cpuCores" >> ${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.conf
-[ -z $ramSize ] || echo "ram=$ramSize"G >> ${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.conf
-[ -z $diskSize ] || echo "disk_size=$diskSize"G >> ${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.conf
-quickemu -vm ${OSRemoveSpace,,}-${correctVer,,}${correctEdition:+-$correctEdition}.conf
-echo quickemu -vm ${OSRemoveSpace,,}-${correctVer,,}${correctEdition:+-$correctEdition}.conf
+configSpec
+quickemu -vm "$configFile"
 fullExit
