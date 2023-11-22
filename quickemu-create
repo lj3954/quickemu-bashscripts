@@ -92,9 +92,9 @@ if [ -z "$OS" ] || cat "$VMDirectory"/.tmp/erroroutput.txt | grep -q "command no
 	echo -e '\nFailure. Invalid OS.'
 	fullExit
 fi
-echo "$osoutput" | tail -n +2
+echo "$osoutput" | grep ' - Releases: '
 read -p 'Enter a release: ' Ver && echo "${osoutput,,}" | grep -qw "${Ver,,}" && correctVer=$(echo $osoutput | grep -io "$Ver" | awk '{print $1; exit}') || { echo 'Failure. Invalid release.'; fullExit; }
-echo "$osoutput" | grep -q ' - Editions: ' && { read -p 'Enter an edition: ' Edition; echo "${osoutput,,}" | grep -qw "${Edition,,}" && correctEdition=$(echo $osoutput | grep -io $Edition | awk '{print $1; exit}') || { echo 'Failure. Invalid edition.'; fullExit; }; }
+echo "$osoutput" | grep -q ' - Editions: ' && { echo "$osoutput" | grep ' - Editions: ' && read -p 'Enter an edition: ' Edition; echo "${osoutput,,}" | grep -qw "${Edition,,}" && correctEdition=$(echo $osoutput | grep -io $Edition | awk '{print $1; exit}') || { echo 'Failure. Invalid edition.'; fullExit; }; }
 releaseString="$OS $Ver${Edition:+ $Edition}"
 configFile="${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.conf"
 [[ -d "$VMDirectory"/"$releaseString" ]] && existingVMResponse
