@@ -13,7 +13,6 @@ curl https://raw.githubusercontent.com/lj3954/quickemu-bashscripts/main/quickemu
 
 ## Features for the future
 
--   Prompt user to install quickemu dependencies (if not already installed)
 -   TBD
 
 ## Configuration
