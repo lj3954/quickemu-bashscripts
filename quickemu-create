@@ -21,6 +21,7 @@ installQuickemu() {
 			command -v dnf > /dev/null && sudo dnf install qemu bash coreutils edk2-tools grep jq lsb procps python3 genisoimage usbutils util-linux sed spice-gtk-tools swtpm wget xdg-user-dirs xrandr unzip
 		fi
 	}
+	[[ "$installInput" == "n" ]] || [[ "$installInput" == "no" ]] && { echo 'Exiting.'; fullExit; }
 }
 deleteVMDirectory() {
   rm -rf "$VMDirectory"/"$releaseString"
