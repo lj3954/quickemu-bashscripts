@@ -9,7 +9,7 @@ fullExit() {
 installQuickemu() {
 	read -p 'Quickemu could not be found. Would you like to install it? [y/n] ' installInput
 	[[ "$installInput" == "y" ]] || [[ "$installInput" == "yes" ]] && {
-		command -v pacman > /dev/null && { command -v yay > /dev/null && yay -Sy quickemu || { echo 'Install quickemu from the AUR instead.'; fullExit; } }
+		command -v pacman > /dev/null && { command -v yay > /dev/null && yay -Sy quickemu || { echo 'Arch Linux detected. Install quickemu from the AUR instead.'; fullExit; } }
 		cat /proc/version | grep -q Ubuntu && { read -p 'Ubuntu detected. Would you like to install quickemu from the PPA or from Git? (Default: Git) ' UbuntuRepoInput; }
 		if [[ "${UbuntuRepoInput,,}" == "ppa" ]] && sudo apt-add-repository ppa:flexiondotorg/quickemu && sudo apt update && sudo apt -y install quickemu; then
 				echo 'Successfully installed quickemu from PPA.' && sleep 1
@@ -17,7 +17,7 @@ installQuickemu() {
 			[[ "${UbuntuRepoInput,,}" == "ppa" ]] && { echo 'Failed to install quickemu from PPA. Installing from Git instead.'; sleep 1; }
 			git clone https://github.com/quickemu-project/quickemu ~/.local/bin/quickemu 2>&1 > /dev/null && echo Installed quickemu in /home/$(whoami)/.local/bin/quickemu || { echo 'Failed to install quickemu. Exiting.'; fullExit; }
 			echo Attempting to install dependencies; sleep 1
-			command -v apt > /dev/null && sudo apt install qemu bash coreutils ovmf grep jq lsb-base procps python3 genisoimage usbutils util-linux sed spice-client-gtk libtss2-tcti-swtpm0 wget xdg-user-dirs zsync unzip socat
+			command -v apt > /dev/null && sudo apt install -y qemu bash coreutils ovmf grep jq lsb-base procps python3 genisoimage usbutils util-linux sed spice-client-gtk libtss2-tcti-swtpm0 wget xdg-user-dirs zsync unzip socat
 			command -v dnf > /dev/null && sudo dnf install qemu bash coreutils edk2-tools grep jq lsb procps python3 genisoimage usbutils util-linux sed spice-gtk-tools swtpm wget xdg-user-dirs xrandr unzip
 		fi
 	}
@@ -118,10 +118,10 @@ configFile="${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.co
 [[ -d "$VMDirectory"/"$releaseString" ]] && existingVMResponse
 specInput
 mkdir "$VMDirectory"/"$releaseString" && cd "$VMDirectory"/"$releaseString" && trap deleteVMDirectory SIGINT
-{
-url=$(quickget --show-iso-url ${OSRemoveSpace,,} ${correctVer,,} ${correctEdition:+$correctEdition})
-echo Downloading from $url
-} &
+if [[ ${OSRemoveSpace,,} != "windows" ]]; then
+	url=$(quickget --show-iso-url ${OSRemoveSpace,,} ${correctVer,,} ${correctEdition:+$correctEdition})
+	echo Downloading from $url
+fi &
 quickget ${OSRemoveSpace,,} ${correctVer,,} ${correctEdition:+$correctEdition} || { echo 'Could not download OS. Exiting.'; deleteVMDirectory; }
 configSpec
 startVM
