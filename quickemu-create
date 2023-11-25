@@ -118,6 +118,10 @@ configFile="${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.co
 [[ -d "$VMDirectory"/"$releaseString" ]] && existingVMResponse
 specInput
 mkdir "$VMDirectory"/"$releaseString" && cd "$VMDirectory"/"$releaseString" && trap deleteVMDirectory SIGINT
+{
+url=$(quickget --show-iso-url ${OSRemoveSpace,,} ${correctVer,,} ${correctEdition:+$correctEdition})
+echo Downloading from $url
+} &
 quickget ${OSRemoveSpace,,} ${correctVer,,} ${correctEdition:+$correctEdition} || { echo 'Could not download OS. Exiting.'; deleteVMDirectory; }
 configSpec
 startVM
