@@ -119,8 +119,9 @@ configFile="${OSRemoveSpace,,}-$correctVer${correctEdition:+-$correctEdition}.co
 specInput
 mkdir "$VMDirectory"/"$releaseString" && cd "$VMDirectory"/"$releaseString" && trap deleteVMDirectory SIGINT
 if [[ ${OSRemoveSpace,,} != "windows" ]]; then
+	prettyName=$(quickget "${OSRemoveSpace,,}" placeholder | awk -F'ERROR! | placeholder' '{print $2}')
 	url=$(quickget --show-iso-url ${OSRemoveSpace,,} ${correctVer,,} ${correctEdition:+$correctEdition})
-	echo Downloading from $url
+	echo Downloading "$prettyName" from $url
 fi &
 quickget ${OSRemoveSpace,,} ${correctVer,,} ${correctEdition:+$correctEdition} || { echo 'Could not download OS. Exiting.'; deleteVMDirectory; }
 configSpec
